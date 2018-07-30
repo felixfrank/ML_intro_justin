@@ -6,8 +6,9 @@ import datetime
 
 #################################################################
 # SETUP PARAMETERS
-epochs = 10000
+epochs = 1500
 learningrate = 0.01
+training_name = input("Please enter training_name: ")
 
 # Create Dataset
 x = tf.constant(2, dtype=tf.float32, name="x_hat")
@@ -17,15 +18,16 @@ sigma_eps = tf.constant(0.1, dtype=tf.float32, name="sigma_eps")
 # CONSTRUCT MODEL
 # q(z)
 mu_z = tf.Variable(initial_value=0, trainable=True, dtype=tf.float32)
-sigma_z = tf.Variable(initial_value=1, trainable=True, dtype=tf.float32)
+sigma_z = tf.nn.softplus(
+    tf.Variable(initial_value=1, trainable=True, dtype=tf.float32))
 
 q_z_dist = tf.distributions.Normal(mu_z, sigma_z, name="q_z_dist")
 z = q_z_dist.sample(10, seed=None)
 
 # likelihood
-likelihood_dist = tf.distributions.Normal(
+likelihood_dist = tf.contrib.distributions.Cauchy(
     tf.exp(z), sigma_eps, name="likelihood")
-likelihood_plot_dist = tf.distributions.Normal(
+likelihood_plot_dist = tf.contrib.distributions.Cauchy(
     tf.exp(mu_z), sigma_eps, name="likelihood_plot")
 # Monte carlo estimate of expectation
 likelihood_loss = tf.reduce_mean(likelihood_dist.log_prob(x))
@@ -62,8 +64,12 @@ mean_summary = tf.summary.scalar(
     name="q(z)_mean", tensor=mu_z)
 sigma_summary = tf.summary.scalar(
     name="q(z)_sigma", tensor=sigma_z)
-log_path_train = 'logdir' + '/train_{}'.format(
-    datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S"))
+if len(training_name) == 0:
+    log_path_train = 'logdir' + '/train_{}'.format(
+        datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S"))
+else:
+    log_path_train = 'logdir' + '/train_{}'.format(
+        training_name)
 train_writer = tf.summary.FileWriter(log_path_train, sess.graph)
 summaries_train = tf.summary.merge_all()
 #################################################################
@@ -93,13 +99,13 @@ for epoch in range(epochs):
         plt.cla()
         plt.plot(x_samples.eval(), pdf_values)
         plt.xlim(-4, 4)
-        plt.ylim(0, 1)
+        plt.ylim(0, 5)
         plt.xlabel('x')
         plt.ylabel('p(x|z)')
         plt.draw()
         plt.pause(0.1)
 
-    # Print elbo each epoch
-    print(
-        "Epoch:", (epoch + 1),
-        "ELBO =", "{:.3f}".format(elbo_calc))
+        # Print elbo every 10th epoch
+        print(
+            "Epoch:", (epoch + 1),
+            "ELBO =", "{:.3f}".format(elbo_calc))
