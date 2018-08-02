@@ -18,17 +18,14 @@ sigma_eps = tf.constant(0.1, dtype=tf.float32, name="sigma_eps")
 # CONSTRUCT MODEL
 # q(z)
 mu_z = tf.Variable(initial_value=0, trainable=True, dtype=tf.float32)
-sigma_z = tf.nn.softplus(
-    tf.Variable(initial_value=1, trainable=True, dtype=tf.float32))
+sigma_z = tf.Variable(initial_value=1, trainable=True, dtype=tf.float32)
 
 q_z_dist = tf.distributions.Normal(mu_z, sigma_z, name="q_z_dist")
 z = q_z_dist.sample(10, seed=None)
 
 # likelihood
-likelihood_dist = tf.contrib.distributions.Cauchy(
+likelihood_dist = tf.distributions.Normal(
     tf.exp(z), sigma_eps, name="likelihood")
-likelihood_plot_dist = tf.contrib.distributions.Cauchy(
-    tf.exp(mu_z), sigma_eps, name="likelihood_plot")
 # Monte carlo estimate of expectation
 likelihood_loss = tf.reduce_mean(likelihood_dist.log_prob(x))
 
@@ -75,6 +72,16 @@ summaries_train = tf.summary.merge_all()
 #################################################################
 
 #################################################################
+# APPROXIMATE POSTERIOR
+z_samples_AP = tf.lin_space(0.0, 1.0, 100)
+likelihood_AP = tf.distributions.Normal(tf.exp(z_samples_AP), sigma_eps)
+joint_AP = prior_dist.prob(z_samples_AP) * likelihood_AP.prob(x)
+dz = z_samples_AP[1].eval() - z_samples_AP[0].eval()
+posterior_AP = joint_AP / tf.reduce_sum(joint_AP) / dz
+
+ap, sjap, jap = sess.run([posterior_AP, tf.reduce_sum(joint_AP), joint_AP])
+
+#################################################################
 # TRAINING PROCESS
 for epoch in range(epochs):
     _, elbo_calc, summary_str = sess.run(
@@ -91,17 +98,18 @@ for epoch in range(epochs):
     if epoch % 10 == 0:
         quant_0_01, quant_0_99 = sess.run(
             [
-                likelihood_plot_dist.quantile(0.01),
-                likelihood_plot_dist.quantile(0.99)
+                q_z_dist.quantile(0.001),
+                q_z_dist.quantile(0.999),
             ])
-        x_samples = tf.lin_space(quant_0_01, quant_0_99, 100)
-        pdf_values = sess.run(likelihood_plot_dist.prob(x_samples))
+        z_samples = tf.lin_space(quant_0_01, quant_0_99, 100)
+        pdf_values = sess.run(q_z_dist.prob(z_samples))
         plt.cla()
-        plt.plot(x_samples.eval(), pdf_values)
-        plt.xlim(-4, 4)
-        plt.ylim(0, 5)
+        plt.plot(z_samples.eval(), pdf_values, label='q(z)')
+        plt.plot(z_samples_AP.eval(), ap, label='p(z|x)')
+        plt.xlim(-2, 2)
+        plt.ylim(0, 10)
         plt.xlabel('x')
-        plt.ylabel('p(x|z)')
+        plt.legend()
         plt.draw()
         plt.pause(0.1)
 
@@ -109,3 +117,5 @@ for epoch in range(epochs):
         print(
             "Epoch:", (epoch + 1),
             "ELBO =", "{:.3f}".format(elbo_calc))
+
+plt.pause(-1)
