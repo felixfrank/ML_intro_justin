@@ -17,8 +17,8 @@ sigma_eps = tf.constant(0.1, dtype=tf.float32, name="sigma_eps")
 #################################################################
 # CONSTRUCT MODEL
 # q(z)
-mu_z = tf.Variable(initial_value=2, trainable=True, dtype=tf.float32)
-sigma_z_var = tf.Variable(initial_value=1, trainable=True, dtype=tf.float32)
+mu_z = tf.Variable(initial_value=3.141, trainable=True, dtype=tf.float32)
+sigma_z_var = tf.Variable(initial_value=.5, trainable=True, dtype=tf.float32)
 sigma_z = 0.5 * tf.sqrt(tf.square(sigma_z_var) + 0.001) + sigma_z_var * 0.5
 
 q_z_dist = tf.distributions.Normal(mu_z, sigma_z, name="q_z_dist")
