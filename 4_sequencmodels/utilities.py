@@ -73,3 +73,26 @@ def data_to_dataset(data):
         i += 1
 
     return out, mask
+
+
+def storn_to_midi(filename):
+    import numpy as np
+    import pickle
+    import pretty_midi
+    song = pretty_midi.PrettyMIDI()
+    instrument = pretty_midi.Instrument(0)
+    note_numbers = np.arange(21, 109, 1, dtype=np.int8)
+    file = open(filename, "rb")
+    data = np.array(pickle.load(file), dtype=np.bool)
+    t_start = 0
+    for timestep in data:
+        t_end = t_start + .25
+        keys = timestep*note_numbers
+        keys = keys[keys > 0]
+        for key in keys:
+            note = pretty_midi.Note(velocity=60, pitch=key, start=t_start, end=t_end)
+            instrument.notes.append(note)
+        t_start = t_end
+    song.instruments.append(instrument)
+    song.write("{}.mid".format(filename.split(".")[0]))
+

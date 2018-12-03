@@ -76,7 +76,12 @@ class Model(object):
         prior = tf.distributions.Normal(0., 1.)
         self._kl = tf.distributions.kl_divergence(self.q, prior)
         self._loglikelihood = tf.reduce_sum(self.posterior.prob(self.obs), axis=-1)
+        self._sample_loglikelihood = self.loglikelihood * self.mask
         self._sample_loss = (-self.loglikelihood + tf.reduce_sum(self.kl, axis=-1)) * self.mask
+        loss = tf.reduce_sum(self.sample_loss)
+        num_timesteps = tf.reduce_sum(self.mask)
+        self._avg_sample_loss =  loss / num_timesteps
+        self._avg_sample_loglikelihood = tf.reduce_sum(self.sample_loglikelihood) / num_timesteps
         return tf.reduce_sum(self.sample_loss)
 
     def _predict(self, h_x_prev, z):
@@ -168,6 +173,19 @@ class Model(object):
     @property
     def init_state(self):
         return self._init_state
+
+    @property
+    def avg_sample_loss(self):
+        return self._avg_sample_loss
+
+    @property
+    def avg_sample_loglikelihood(self):
+        return self._avg_sample_loglikelihood
+
+    @property
+    def sample_loglikelihood(self):
+        return self._sample_loglikelihood
+    
     
 # data = [[[0, 0, 0, 0, 0], [0, 1, 0, 0, 1], [0, 1, 1, 0, 1], [0, 1, 0, 1, 0], [0, 0, 1, 0, 0], [1, 0, 0, 0, 0]], [[0, 0, 0, 1, 0], [0, 0, 0, 0, 1], [1, 1, 1, 0, 1], [0, 1, 0, 1, 0], [0, 0, 1, 0, 0], [1, 0, 0, 0, 1]]]
 # data = np.array(data)
